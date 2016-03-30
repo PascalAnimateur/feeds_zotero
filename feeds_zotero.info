@@ -1,0 +1,7 @@
+name = Feeds Zotero
+description = Feeds Zotero fetcher and parser.
+core = 7.x
+package = Feeds
+dependencies[] = feeds
+files[] = FeedsZoteroHTTPFetcher.inc
+files[] = FeedsZoteroParser.inc
