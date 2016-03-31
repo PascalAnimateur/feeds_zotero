@@ -16,16 +16,100 @@ function feeds_zotero_feeds_ctools_plugin_api() {
 function feeds_zotero_feeds_plugins() {
   $info = array();
 
-  $info['FeedsZoteroHTTPFetcher'] = array(
-    'name' => 'Zotero HTTP Fetcher',
+  $info['FeedsZoteroFetcher'] = array(
+    'name' => 'Zotero Fetcher',
     'description' => 'Fetches user and group libraries from Zotero.',
     'handler' => array(
-      'parent' => 'FeedsHTTPFetcher',
-      'class' => 'FeedsZoteroHTTPFetcher',
-      'file' => 'FeedsZoteroHTTPFetcher.inc',
+      'parent' => 'FeedsFetcher',
+      'class' => 'FeedsZoteroFetcher',
+      'file' => 'FeedsZoteroFetcher.inc',
+      'path' => drupal_get_path('module', 'feeds_zotero'),
+    ),
+  );
+  $info['FeedsZoteroParser'] = array(
+    'name' => 'Zotero Parser',
+    'description' => 'Parses data from Zotero.',
+    'handler' => array(
+      'parent' => 'FeedsParser',
+      'class' => 'FeedsZoteroParser',
+      'file' => 'FeedsZoteroParser.inc',
       'path' => drupal_get_path('module', 'feeds_zotero'),
     ),
   );
 
   return $info;
+}
+
+/**
+ * Helper function to get list of Zotero item types.
+ */
+function _feeds_zotero_get_item_types() {
+  $types = &drupal_static(__FUNCTION__);
+  if (!isset($types)) {
+    if ($cache = cache_get('feeds_zotero:item_types')) {
+      $types = $cache->data;
+    }
+    else {
+      feeds_include_library('http_request.inc', 'http_request');
+      $result = http_request_get('https://api.zotero.org/itemTypes');
+      if (!in_array($result->code, array(200, 201, 202, 203, 204, 205, 206))) {
+        return $types;
+      }
+      foreach(drupal_json_decode($result->data) as $type) {
+        $types[$type['itemType']] = $type['localized'];
+      }
+      cache_set('feeds_zotero:item_types', $types, 'cache');
+    }
+  }
+  return $types;
+}
+
+/**
+ * Helper function to get list of Zotero item fields.
+ */
+function _feeds_zotero_get_item_fields() {
+  $fields = &drupal_static(__FUNCTION__);
+  if (!isset($fields)) {
+    if ($cache = cache_get('feeds_zotero:item_fields')) {
+      $fields = $cache->data;
+    }
+    else {
+      feeds_include_library('http_request.inc', 'http_request');
+      $result = http_request_get('https://api.zotero.org/itemFields');
+      if (!in_array($result->code, array(200, 201, 202, 203, 204, 205, 206))) {
+        return $fields;
+      }
+      foreach(drupal_json_decode($result->data) as $field) {
+        $fields[$field['field']] = $field['localized'];
+      }
+      cache_set('feeds_zotero:item_fields', $fields, 'cache');
+    }
+  }
+  return $fields;
+}
+
+/**
+ * Helper function to get list of Zotero creator types.
+ */
+function _feeds_zotero_get_creator_types() {
+  $creator_types = &drupal_static(__FUNCTION__);
+  if (!isset($creator_types)) {
+    if ($cache = cache_get('feeds_zotero:creator_types')) {
+      $creator_types = $cache->data;
+    }
+    else {
+      feeds_include_library('http_request.inc', 'http_request');
+      foreach (_feeds_zotero_get_item_types() as $item_type => $item_localized) {
+        $result = http_request_get("https://api.zotero.org/itemTypeCreatorTypes?itemType=$item_type");
+        if (!in_array($result->code, array(200, 201, 202, 203, 204, 205, 206))) {
+          return $creator_types;
+        }
+        foreach(drupal_json_decode($result->data) as $creator_type) {
+          $creator_types[$creator_type['creatorType']] = $creator_type['localized'];
+        }
+      }
+      cache_set('feeds_zotero:creator_types', $creator_types, 'cache');
+    }
+  }
+  return $creator_types;
 }
