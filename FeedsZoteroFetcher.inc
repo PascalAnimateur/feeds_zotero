@@ -109,13 +109,13 @@ class FeedsZoteroFetcher extends FeedsFetcher {
         throw new Exception(t('Download of @url failed with code !code. Error details: !details',
           array('@url' => $url, '!code' => $result->code, '!details' => $result->data)));
       }
+      $fetcher_result->addItems($result->data);
       if (preg_match('/start=(\d+)>; rel="next"/', $result->headers['link'], $matches)) {
         $start = $matches[1];
       }
       else {
         break;
       }
-      $fetcher_result->addItems($result->data);
     }
 
     return $fetcher_result;
